@@ -1,18 +1,3 @@
-#GET /1.1/users/search.json?q=Anna%20Kendrick HTTP/1.1
-#Authorization:
-#OAuth oauth_consumer_key="DC0sePOBbQ8bYdC8r4Smg",
-#oauth_signature_method="HMAC-SHA1",
-#oauth_timestamp="1421785641",
-#oauth_nonce="3486956767",
-#oauth_version="1.0",
-#oauth_token="2815366039-fDBncJHWLiMT8xvCHlbttBcGgY1vgqQiN9ZNPue",
-#oauth_signature="OngaLZmH4VVcATAmkY%2BE%2Bcj1iEk%3D"
-#Host:
-#api.twitter.com
-#X-Target-URI:
-#https://api.twitter.com
-#Connection:
-#Keep-Alive
 
 import urllib2
 from bs4 import BeautifulSoup
@@ -22,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pprint import pprint
 from datetime import datetime
+import pickle
 
 
 ### FUNCTION DEFINITIONS
@@ -131,76 +117,203 @@ def find_wiki_age(soup):
 		return get_age_from_datetimes(datetime.today(), birth_date)
 	else: return None
 
+def get_twi_search_url_from_name(name):
+	query = urllib2.quote(name)
+	return "https://api.twitter.com/1.1/users/search.json?q=" + query
+
+def twi_factors_from_search_response(json_data):
+	returned = json.loads(json_data)
+
+	# Iterate through all search results and choose the most likely one (if any)
+	# 	We will determine this by choosing the highest verified account in the results
+	# 	if a verified one exists. If no verified, we assume no twitter.
+	returnVal = (None, None, None)
+	for i in range(len(returned)):
+		if str(returned[i]['verified']) == 'True':
+			followers = returned[i]['followers_count']
+			tweets = returned[i]['statuses_count']
+			years_on_twi = int(datetime.today().year) - int(str(returned[i]['created_at'])[-4:])
+			returnVal = (followers, tweets, years_on_twi)
+			break
+		else:
+			continue
+	return returnVal
+
 
 ### FIND ACTRESSES AND ACTORS
 
-urls = ["http://boxofficemojo.com/people/?view=Actor&pagenum=1&sort=person&order=ASC&p=.htm",
-			"http://boxofficemojo.com/people/?view=Actor&pagenum=2&sort=person&order=ASC&p=.htm",
-			"http://boxofficemojo.com/people/?view=Actor&pagenum=3&sort=person&order=ASC&p=.htm"]
+# urls = ["http://boxofficemojo.com/people/?view=Actor&pagenum=1&sort=person&order=ASC&p=.htm",
+# 			"http://boxofficemojo.com/people/?view=Actor&pagenum=2&sort=person&order=ASC&p=.htm",
+# 			"http://boxofficemojo.com/people/?view=Actor&pagenum=3&sort=person&order=ASC&p=.htm"]
 
-queries = ["\./chart/\?view=Actor&id=amyadams", 
-			"\./chart/\?view=Actor&id=hughjackman",
-			"\./chart/\?view=Actor&id=danielradcliffe"]
+# queries = ["\./chart/\?view=Actor&id=amyadams", 
+# 			"\./chart/\?view=Actor&id=hughjackman",
+# 			"\./chart/\?view=Actor&id=danielradcliffe"]
 
-people_sum_dict = {}
+# people_sum_dict = {}
 
-# Returns a dictionary of actresses and actors with fields: total gross, # movies, avg gross, top gross
-for num, url in enumerate(urls):
-	page = urllib2.urlopen(url)
-	soup = BeautifulSoup(page, 'html5lib')
+# # Returns a dictionary of actresses and actors with fields: total gross, # movies, avg gross, top gross
+# for num, url in enumerate(urls):
+# 	page = urllib2.urlopen(url)
+# 	soup = BeautifulSoup(page, 'html5lib')
 
-	#Make a query to some content in the first cell of the table
-	query = soup.find(href = re.compile(queries[num]))
+# 	#Make a query to some content in the first cell of the table
+# 	query = soup.find(href = re.compile(queries[num]))
 
-	# Find the tr which contains this query
-	current_tr = find_current_tr(soup, query)
+# 	# Find the tr which contains this query
+# 	current_tr = find_current_tr(soup, query)
 
-	# Get the rest of the rows
-	next_row = current_tr
-	while next_row is not None:
-		# Make a list of the current row
-		td_list = get_td_list_from_tr(soup, next_row)
+# 	# Get the rest of the rows
+# 	next_row = current_tr
+# 	while next_row is not None:
+# 		# Make a list of the current row
+# 		td_list = get_td_list_from_tr(soup, next_row)
 
-		# Add the actresses as a key in the dict
-		people_sum_dict[td_list[0].text] = []
-		people_sum_dict[td_list[0].text].append(money_to_float(td_list[1].text))
-		people_sum_dict[td_list[0].text].append(int(td_list[2].text))
-		people_sum_dict[td_list[0].text].append(money_to_float(td_list[3].text))
-		people_sum_dict[td_list[0].text].append(money_to_float(td_list[5].text))
+# 		# Add the actresses as a key in the dict
+# 		people_sum_dict[td_list[0].text] = []
+# 		people_sum_dict[td_list[0].text].append(money_to_float(td_list[1].text))
+# 		people_sum_dict[td_list[0].text].append(int(td_list[2].text))
+# 		people_sum_dict[td_list[0].text].append(money_to_float(td_list[3].text))
+# 		people_sum_dict[td_list[0].text].append(money_to_float(td_list[5].text))
 
-		# Get the next row
-		next_row = find_next_row(soup, next_row)
+# 		# Get the next row
+# 		next_row = find_next_row(soup, next_row)
 
-# Convert dict to a pandas dataframe (we didn't start with this for practice!)
-actress_data = pd.DataFrame.from_dict(people_sum_dict, orient='index')
-actress_data.columns = ['TotalGross', 'NumMovies', "AvgGross", "TopGross"]
+# # Convert dict to a pandas dataframe (we didn't start with this for practice!)
+# actress_data = pd.DataFrame.from_dict(people_sum_dict, orient='index')
+# actress_data['Names'] = list(actress_data.index)
+# actress_data.columns = ['TotalGross', 'NumMovies', "AvgGross", "TopGross", "Names"]
 
 
-### GET ADDITIONAL FEATURES BITCH! (THIS TIME FROM WIKIPEDIA)
+# ### GET AGE OF ACTRESS OR ACTOR
 
-# List we will put the ages into
-actress_ages = []
+# # List we will put the ages into
+# actress_ages = []
+
+# row_iterator = actress_data.iterrows()
+# last = row_iterator.next()
+# row_iterator = actress_data.iterrows()
+
+# counter = 0
+
+# for name, row in row_iterator:
+# 	counter += 1
+
+# 	# Get the wiki url we need to go to for the age
+# 	url = get_wiki_url_by_name(name)
+
+# 	# Get the age of the actress and append to list
+# 	try: page = urllib2.urlopen(url)
+# 	except: 
+# 		actress_ages.append(None)
+# 		continue
+# 	try: soup = BeautifulSoup(page, 'html5lib')
+# 	except: 
+# 		actress_ages.append(None)
+# 		continue
+# 	age = find_wiki_age(soup)
+# 	actress_ages.append(age)
+# 	print str(counter) + " out of " + str(len(actress_data))
+
+# 	# Next row
+# 	last = row
+
+# print str(len(actress_data)), str(len(actress_ages))
+# actress_data['Age'] = actress_ages
+# print actress_data.head()
+
+# with open('current_movies_df.p','wb') as picklefile:
+# 	pickle.dump(actress_data,picklefile)
+
+
+### GET TWITTER DATA OF ACTRESS OR ACTOR
+
+import oauth2 as oauth
+import json
+
+# Oauth2 for Twitter API data
+CONSUMER_KEY = "AeeP8XqdVn4JKkFe1taObuLo7"
+CONSUMER_SECRET = "BAzTezf78LneLG0zVXVaIeG6bXOaCnJ12ennEXZVVNK1plCiwc"
+ACCESS_KEY = "2815366039-1HLdZHBjOf3A2ZStoi2GJPZx8OsobTU5FtAQzON"
+ACCESS_SECRET = "coXCsBzu7T38rU3RQYh9BLGQkQLHXtMqcal1rNYHkqk6e"
+
+consumer = oauth.Consumer(key=CONSUMER_KEY, secret=CONSUMER_SECRET)
+access_token = oauth.Token(key=ACCESS_KEY, secret=ACCESS_SECRET)
+client = oauth.Client(consumer, access_token)
+
+# Load pickledata for data frame
+with open('current_movies_df.p','rb') as picklefile:
+ 	actress_data = pickle.load(picklefile)
+
+# Reset the index to integers
+actress_data.index = range(len(actress_data))
+
+# Iterate through names in our data frame, query twitter for follower count, tweets, 
+# 	and date twitter account started
+
+# Load current twitter data
+with open('twitter_data.p','rb') as picklefile:
+ 	list_length, names, followers_all, num_tweets_all, years_on_twi_all = pickle.load(picklefile)
+
+# Initialize twitter data if needed
+# list_length = 0
+# names = []
+# followers_all = []
+# num_tweets_all = []
+# years_on_twi_all = []
 
 row_iterator = actress_data.iterrows()
 last = row_iterator.next()
-for name, row in row_iterator:
-	# Get the wiki url we need to go to for the age
-	url = get_wiki_url_by_name(name)
-	print url
+row_iterator = actress_data.iterrows()
 
-	# Get the age of the actress and append to list
-	page = urllib2.urlopen(url)
-	soup = BeautifulSoup(page, 'html5lib')
-	if not soup:
-		continue
-	age = find_wiki_age(soup)
-	print age
-	actress_ages.append(age)
+# We need to keep track of the queries we have already made bc of rate limiting
+for i in range(list_length):
+	last = row_iterator.next()
+
+# Make queries to twitter API
+counter = 0
+for name, row in row_iterator:
+	counter += 1
+
+	twi_url_request = get_twi_search_url_from_name(str(row['Names']))
+	twi_response, twi_data = client.request(twi_url_request)
+
+	# Check rate limit
+	queries_left = int(twi_response['x-rate-limit-remaining'])
+	if queries_left > 0:
+		followers, num_tweets, years_on_twi = twi_factors_from_search_response(twi_data)
+		followers_all.append(followers)
+		num_tweets_all.append(num_tweets)
+		years_on_twi_all.append(years_on_twi)
+		names.append(str(row['Names']))
+	else: 
+		# Write what we have to the file
+		with open('twitter_data.p','wb') as picklefile:
+			# What is the current length of the lists
+			list_length = len(followers_all)
+			print (list_length, names, followers_all, num_tweets_all, years_on_twi_all)
+ 			pickle.dump((list_length, names, followers_all, num_tweets_all, years_on_twi_all), picklefile)
+
+ 		break
+
+	print str(counter)
 
 	# Next row
 	last = row
 
-print actress_ages
+# Write to file
+with open('twitter_data.p','wb') as picklefile:
+	# What is the current length of the lists
+	list_length = len(followers_all)
+	print (list_length, names, followers_all, num_tweets_all, years_on_twi_all)
+ 	pickle.dump((list_length, names, followers_all, num_tweets_all, years_on_twi_all), picklefile)
+
+
+### GET ADDITIONAL DATA ?!?!?!
+
+
+
+
 
 
 
