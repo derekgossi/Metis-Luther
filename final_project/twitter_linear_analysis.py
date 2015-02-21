@@ -8,7 +8,7 @@ from sklearn.preprocessing import normalize
 from sklearn import cross_validation
 
 # Load dataframe
-with open('df_w_celeb_dist.p','rb') as picklefile:
+with open('../df_w_celeb_dist.p','rb') as picklefile:
 	actress_data = pickle.load(picklefile)
 
 # Drop NaN values
@@ -29,19 +29,43 @@ X = actress_data[['NumTweetsPerYr', 'YrsOnTwitter', 'Age', 'TopGross',
 					'AvgGross', 'NumMovies', 'CelebDist', 'Ones']]
 y = actress_data['ln_NumFollowers']
 
-# Initialize linear ridge model
-linear_model = Ridge(alpha=1.0)
+# # Initialize linear ridge model
+# linear_model = Ridge(alpha=1.0)
 
-# Get cross validation splits and fit model
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.75, random_state=0)
-fitted_model = linear_model.fit(X_train,y_train)
-scores = cross_validation.cross_val_score(linear_model, X, y, cv=4)
+# # Get cross validation splits and fit model
+# X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.3, random_state=0)
+# fitted_model = linear_model.fit(X_train,y_train)
+# scores = cross_validation.cross_val_score(linear_model, X_test, y_test, cv=4)
 
-# Print sumamary statistics
-print scores
-print scores.mean()
-print scores.std()
-print fitted_model.coef_
-print fitted_model.intercept_
+# # Print sumamary statistics
+# print scores
+# print scores.mean()
+# print scores.std()
+# print fitted_model.coef_
+# print fitted_model.intercept_
+
+# Initialize additional models
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.svm import SVR
+import sklearn.metrics
+
+lin = Ridge(alpha=1.0)
+rf = RandomForestRegressor()
+gb = GradientBoostingRegressor()
+svm = SVR()
+
+regressors = [lin, rf, gb, svm]
+
+X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.3, random_state=0)
+
+for regressor in regressors:
+	# Fit model
+	regressor.fit(X_train, y_train)
+
+	# Score
+	y_predicted = regressor.predict(X_test)
+	print sklearn.metrics.mean_squared_error(y_test, y_predicted)
+
 
 

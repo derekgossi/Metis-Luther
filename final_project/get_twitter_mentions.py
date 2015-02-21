@@ -18,7 +18,7 @@ access_token = oauth.Token(key=ACCESS_KEY, secret=ACCESS_SECRET)
 client = oauth.Client(consumer, access_token)
 
 # Open twitter words dict
-with open('twitter_mention_words.p','rb') as picklefile:
+with open('../twitter_mention_words.p','rb') as picklefile:
 	twitter_dict = pickle.load(picklefile)
 
 # Initialize counter
