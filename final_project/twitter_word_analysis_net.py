@@ -43,7 +43,7 @@ for i in range(len(features)):
 	features_count_dict[features[i]] = counts[i]
 
 sorted_feat_count_dict = sorted(features_count_dict.items(), key=operator.itemgetter(1), reverse=True)
-vocabulary = sorted_feat_count_dict[0:5000]
+vocabulary = sorted_feat_count_dict[0:1000]
 vocabulary = [i[0] for i in vocabulary]
 
 # Make a tfidf vectorizer with limited dictionary
@@ -69,13 +69,13 @@ for i in range(len(cosine_similarities)):
 					"name" : metadata[0] 
 					} ])
 
-threshold = 0.025
+threshold = 0.035
 
 for i in range(len(cosine_similarities)):
 	for j in range(i+1, len(cosine_similarities)):
 		if cosine_similarities[i][j] >= threshold:
 			# Create an edge
-			weight = exp(cosine_similarities[i][j] - threshold)
+			weight = np.exp(cosine_similarities[i][j] - threshold)
 			return_dict["edges"].append([[i+1, j+1], {"weight" : weight}])
 
 # Save the json file
