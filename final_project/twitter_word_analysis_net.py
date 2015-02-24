@@ -69,13 +69,14 @@ for i in range(len(cosine_similarities)):
 					"name" : metadata[0] 
 					} ])
 
-threshold = 0.1
+threshold = 0.025
 
 for i in range(len(cosine_similarities)):
 	for j in range(i+1, len(cosine_similarities)):
 		if cosine_similarities[i][j] >= threshold:
 			# Create an edge
-			return_dict["edges"].append([[i+1, j+1], {"weight" : cosine_similarities[i][j]}])
+			weight = exp(cosine_similarities[i][j] - threshold)
+			return_dict["edges"].append([[i+1, j+1], {"weight" : weight}])
 
 # Save the json file
 with open('network_data.json', 'w') as outfile:
